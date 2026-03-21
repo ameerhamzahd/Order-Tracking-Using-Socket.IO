@@ -16,12 +16,16 @@ const app = express();
 
 const server = http.createServer(app);
 
-
-
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
 io.on("connection", (socket) => {
-  console.log(`A user connected`, socket.id)
+  console.log(`A user connected`, socket.id);
+
+  socket.emit("Connected", {
+    message: `User ${socket.id} is connected...`
+  });
+
+  orderHandler(io, socket);
 });
 
 io.listen(3000);

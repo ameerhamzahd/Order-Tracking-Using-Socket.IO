@@ -43,3 +43,44 @@ export function generateOrderId() {
 
     return `ORD-${year}${month}${day}-${orderId}`
 }
+
+export function calculateTotal(items) {
+    const subTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const tax = subTotal * 0.10;
+    const deliveryFee = 35.00;
+    const total = subTotal + tax + deliveryFee;
+
+    return {
+        subTotal: Math.round(subTotal * 100) / 100,
+        tax: Math.round(tax * 100) / 100,
+        deliveryFee,
+        totalAmount: Math.round(total * 100) / 100
+    }
+}
+
+export function createOrder(orderData, orderId, totals) {
+    return {
+        orderId,
+        customerName: orderData.customerName.trim(),
+        customerPhone: orderData.customerPhone.trim(),
+        customerAddress: orderData.customerAddress.trim(),
+        items: orderData.items,
+        subtotal: totals.subtotal,
+        tax: totals.tax,
+        deliveryFee: totals.deliveryFee,
+        totalAmount: totals.totalAmount,
+        specialNotes: orderData.specialNotes || '',
+        paymentMethod: orderData.paymentMethod || 'cash',
+        paymentStatus: 'pending',
+        status: 'pending',
+        statusHistory: [{
+            status: 'pending',
+            timestamp: new Date(),
+            by: 'customer',
+            note: 'Order placed'
+        }],
+        estimatedTime: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+    }
+}

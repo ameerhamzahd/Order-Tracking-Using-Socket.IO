@@ -53,7 +53,7 @@ export const orderHandler = (io, socket) => {
         try {
             const ordersCollection = getCollection("orders");
             const order = await ordersCollection.findOne({
-                orderId: data, orderId
+                orderId: data.orderId
             });
 
             if (!order) {
@@ -70,6 +70,68 @@ export const orderHandler = (io, socket) => {
             });
         } catch (error) {
             console.error("Order tracking error", error);
+            callback({
+                success: false,
+                message: error.message
+            });
+        }
+    })
+
+    // CANCEL ORDER
+    socket.on("cancelOrder", async (data, callback) => {
+        try {
+            const ordersCollection = getCollection("orders");
+            const order = await ordersCollection.findOne({
+                orderId: data.orderId
+            });
+
+            if (!order) {
+                return callback({
+                    success: false,
+                    message: "Order not found"
+                });
+            }
+
+            if (!['pending', 'confirmed'].includes(order.status)) {
+                return callback({
+                    success: false,
+                    message: "Can not cancel the order."
+                })
+            }
+
+            await ordersCollection.updateOne(
+                {
+                    orderId: data.orderId
+                },
+                {
+                    $set: {
+                        status: 'cancelled',
+                        updatedAt: new Date()
+                    },
+                    $push: {
+                        statusHistory: {
+                            satus: "cancelled",
+                            timestamp: new Date(),
+                            by: socket.id,
+                            note: data.reason || "Cancelled by customer"
+                        }
+                    }
+                }
+            )
+
+            io.to(`order-${data.orderId}`).emit("orderCancelled", {
+                orderId: data.orderId
+            });
+            io.to("admins").emit("orderCancelled", {
+                orderId: data.orderId,
+                customerName: order.customerName
+            })
+
+            callback({
+                success: true
+            })
+        } catch (error) {
+            console.error("Order cancelling error", error);
             callback({
                 success: false,
                 message: error.message

@@ -44,6 +44,7 @@ export function generateOrderId() {
     return `ORD-${year}${month}${day}-${orderId}`
 }
 
+// CALCULATE TOTAL
 export function calculateTotal(items) {
     const subTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const tax = subTotal * 0.10;
@@ -58,6 +59,7 @@ export function calculateTotal(items) {
     }
 }
 
+// CREATE ORDER
 export function createOrder(orderData, orderId, totals) {
     return {
         orderId,
@@ -83,4 +85,18 @@ export function createOrder(orderData, orderId, totals) {
         createdAt: new Date(),
         updatedAt: new Date()
     }
+}
+
+export function isValidStatusTransition(currentStatus, newStatus) {
+    const validTransitions = {
+        "pending": ['confirmed', 'cancelled'],
+        'confirmed': ['preparing', 'cancelled'],
+        'preparing': ['ready, cancelled'],
+        'ready': ['out_for_delivery', 'cancelled'],
+        'out_for_delivery': ['delivered'],
+        'delivered': [],
+        'cancelled': []
+    }
+
+    return validTransitions[currentStatus]?.includes(newStatus) || false;
 }

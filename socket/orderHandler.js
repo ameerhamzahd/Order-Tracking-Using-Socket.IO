@@ -6,7 +6,7 @@ export const orderHandler = (io, socket) => {
 
     // EMIT -> TRIGGER -> ON -> LISTEN
 
-    // PLACE ORDER
+    // CUSTOMER -> PLACE ORDER
     socket.on("placeOrder", async (data, callback) => {
         try {
             console.log(`Placed order from ${socket.id}`);
@@ -48,7 +48,7 @@ export const orderHandler = (io, socket) => {
         }
     });
 
-    // TRACK ORDER
+    // CUSTOMER -> TRACK ORDER
     socket.on("trackOrder", async (data, callback) => {
         try {
             const ordersCollection = getCollection("orders");
@@ -77,7 +77,7 @@ export const orderHandler = (io, socket) => {
         }
     })
 
-    // CANCEL ORDER
+    // CUSTOMER -> CANCEL ORDER
     socket.on("cancelOrder", async (data, callback) => {
         try {
             const ordersCollection = getCollection("orders");
@@ -139,7 +139,7 @@ export const orderHandler = (io, socket) => {
         }
     })
 
-    // GET MY ALL ORDERS
+    // CUSTOMER -> GET MY ALL ORDERS
     socket.on("getMyOrders", async (data, callback) => {
         try {
             const ordersCollection = getCollection("orders");
@@ -159,6 +159,58 @@ export const orderHandler = (io, socket) => {
                 success: false,
                 message: error.message
             });
+        }
+    })
+
+    // ADMIN -> LOGIN
+    socket.on("adminLogin", async (data, callback) => {
+        try {
+            if (data.password === process.env.ADMIN_PASSWORD) {
+                socket.isAdmin = true;
+                socket.join("admins");
+
+                console.log(`admin logged in: ${socket.id}`);
+
+                callback({
+                    success: true
+                })
+            } else {
+                callback({
+                    success: false,
+                    message: "Invalid credensials"
+                })
+            }
+        } catch (error) {
+            callback({
+                success: false,
+                message: "Login failed"
+            })
+        }
+    })
+
+    // ADMIN -> GET ALL ORDERS
+    socket.on("getAllOrders", async (data, callback) => {
+        try {
+            if (!socket.isAdmin) {
+                return callback({
+                    success: false,
+                    message: "Unauthorized"
+                })
+            }
+
+            const ordersCollection = getCollection("orders");
+            const filter = data?.status ? { status: data.status } : {};
+            const orders = await orderCollection.find(filter).sort({ createdAt: -1 }).limit(20).toArray();
+
+            callback({
+                success: true,
+                orders
+            });
+        } catch (error) {
+            callback({
+                success: false,
+                message: "Failed to retrive all orders"
+            })
         }
     })
 };

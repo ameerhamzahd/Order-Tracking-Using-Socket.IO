@@ -242,9 +242,9 @@ export const orderHandler = (io, socket) => {
                     orderId: data.orderId
                 },
                 {
-                    $set: { 
-                        status: data.newStatus, 
-                        updatedAt: new Date() 
+                    $set: {
+                        status: data.newStatus,
+                        updatedAt: new Date()
                     },
                     $push: {
                         statusHistory: {
@@ -311,10 +311,10 @@ export const orderHandler = (io, socket) => {
                     orderId: data.orderId
                 },
                 {
-                    $set: { 
-                        status: "confirmed", 
+                    $set: {
+                        status: "confirmed",
                         estimatedTime,
-                        updatedAt: new Date()  
+                        updatedAt: new Date()
                     },
                     $push: {
                         statusHistory: {
@@ -342,6 +342,109 @@ export const orderHandler = (io, socket) => {
             callback({
                 success: true,
                 order: queryResult
+            });
+        } catch (error) {
+            callback({
+                success: false,
+                message: error.message
+            })
+        }
+    })
+
+    // ADMIN -> REJECT ORDER
+    socket.on("rejectOrder", async (data, callback) => {
+        try {
+            if (!socket.isAdmin) {
+                return callback({
+                    success: false,
+                    message: "Unauthorized"
+                })
+            }
+
+            const ordersCollection = getCollection("orders");
+            const order = await ordersCollection.findOne({
+                orderId: data.orderId
+            });
+
+            if (!order || order.status !== "pending") {
+                return callback({
+                    success: false,
+                    message: "Can't reject the order"
+                })
+            }
+
+            const queryResult = await ordersCollection.findOneAndUpdate(
+                {
+                    orderId: data.orderId
+                },
+                {
+                    $set: {
+                        status: "cancelled",
+                        estimatedTime,
+                        updatedAt: new Date()
+                    },
+                    $push: {
+                        statusHistory: {
+                            status: "cancelled",
+                            timestamp: new Date(),
+                            by: socket.id,
+                            note: `Rejected`
+                        }
+                    }
+                },
+                {
+                    returnDocument: 'after'
+                }
+            )
+
+            io.to(`order-${data.orderId}`).emit('orderRejected', {
+                orderId: data.orderId,
+                reason: data.reason
+            });
+
+            socket.on("admins").emit("orderRejectedByAdmin", {
+                oreason: data.reason
+            });
+
+            callback({
+                success: true
+            });
+        } catch (error) {
+            callback({
+                success: false,
+                message: error.message
+            })
+        }
+    })
+
+    // ADMIn -> LIVE STATS
+    socket.on("getLiveStats", async (data, callback) => {
+        try {
+            if (!socket.isAdmin) {
+                return callback({
+                    success: false,
+                    message: "Unauthorized"
+                })
+            }
+
+            const ordersCollection = getCollection("orders");
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const stats = {
+                totalToday: await ordersCollection.countDocuments({ createdAt: { $gte: today } }),
+                pending: await ordersCollection.countDocuments({ status: "pending" }),
+                confirmed: await ordersCollection.countDocuments({ status: "confirmed" }),
+                preparing: await ordersCollection.countDocuments({ status: "preparing" }),
+                ready: await ordersCollection.countDocuments({ status: "ready" }),
+                out_for_delivery: await ordersCollection.countDocuments({ status: "out_for_delivery" }),
+                delivered: await ordersCollection.countDocuments({ status: "delivered" }),
+                cancelled: await ordersCollection.countDocuments({ status: "cancelled" })
+            }
+
+            callback({
+                success: true,
+                stats
             });
         } catch (error) {
             callback({

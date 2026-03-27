@@ -23,11 +23,11 @@ const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } 
 io.on("connection", (socket) => {
   console.log(`A user connected`, socket.id);
 
-  socket.emit("Connected", {
+  socket.emit("connected", {
     message: `User ${socket.id} is connected...`
   });
 
-  console.log(generateOrderId())
+  // console.log(generateOrderId())
   orderHandler(io, socket);
 });
 
